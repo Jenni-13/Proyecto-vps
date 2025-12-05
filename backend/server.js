@@ -1,9 +1,7 @@
-const express = require("express");
-const app = express();
+const app = require("./src/app");
 
-app.get("/api/saludo", (req, res) => {
-    res.json({ mensaje: "Hola desde API v1" });
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log("Servidor corriendo en puerto", PORT);
 });
-
-app.listen(3000, () => console.log("API corriendo en puerto 3000"));
-module.exports = app;

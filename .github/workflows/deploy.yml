@@ -13,6 +13,20 @@ jobs:
       packages: write 
       
     steps:
+      # 🚨 1. PASO CLAVE: CALCULAR LA RUTA COMPLETA EN MINÚSCULAS 🚨
+      - name: Get Lowercase Repository Info
+        id: get_repo_info
+        run: |
+          # 1. Convertir el dueño del repositorio (Jenni-13) a minúsculas
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          
+          # 2. El nombre del repo ya es minúsculas (proyecto-vps)
+          REPO_NAME=${{ github.event.repository.name }}
+          
+          # 3. Combinar para obtener la ruta completa y guardarla como output
+          FULL_REPO_PATH="$OWNER_LOWER/$REPO_NAME"
+          echo "full_repo_path=$FULL_REPO_PATH" >> $GITHUB_OUTPUT
+      
       - name: Checkout repo
         uses: actions/checkout@v3
 
@@ -36,25 +50,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }} 
 
-      # 🚨 1. CORRECCIÓN: Build y Push Backend (dueño y repo en minúsculas) 🚨
+      # 🚨 2. Build y Push Backend (usando el Output del paso) 🚨
       - name: Build and Push Backend Image
         uses: docker/build-push-action@v4
         with:
           context: ./backend
           push: true
           file: ./backend/Dockerfile
-          # La clave: convertir el DUEÑO del repositorio a minúsculas
-          tags: ghcr.io/${{ lower(github.repository_owner) }}/${{ github.repository }}/backend:${{ github.sha }}
+          # Usamos el output que ya está garantizado en minúsculas: jenni-13/proyecto-vps
+          tags: ghcr.io/${{ steps.get_repo_info.outputs.full_repo_path }}/backend:${{ github.sha }}
 
-      # 🚨 2. CORRECCIÓN: Build y Push Frontend (dueño y repo en minúsculas) 🚨
+      # 🚨 3. Build y Push Frontend (usando el Output del paso) 🚨
       - name: Build and Push Frontend Image
         uses: docker/build-push-action@v4
         with:
           context: ./frontend
           push: true
           file: ./frontend/Dockerfile
-          # La clave: convertir el DUEÑO del repositorio a minúsculas
-          tags: ghcr.io/${{ lower(github.repository_owner) }}/${{ github.repository }}/frontend:${{ github.sha }}
+          # Usamos el output que ya está garantizado en minúsculas
+          tags: ghcr.io/${{ steps.get_repo_info.outputs.full_repo_path }}/frontend:${{ github.sha }}
 
       # --- 🚀 Despliegue a VPS (Blue-Green) ---
       
@@ -68,14 +82,14 @@ jobs:
             # Moverse al directorio del proyecto
             cd ~/Proyecto-vps
 
-            # SINCRONIZACIÓN DE CÓDIGO (Para obtener este .yml corregido y los .conf)
+            # SINCRONIZACIÓN DE CÓDIGO
             git pull origin main
             
             # Asegurar que el Nginx proxy esté corriendo
             docker compose up -d nginx
 
-            # 🚨 3. CORRECCIÓN: EXPORTAR GH_REPO (dueño y repo en minúsculas) 🚨
-            export GH_REPO=${{ lower(github.repository_owner) }}/${{ github.repository }}
+            # 🚨 4. EXPORTAR VARIABLES (usando el Output) 🚨
+            export GH_REPO=${{ steps.get_repo_info.outputs.full_repo_path }}
             export IMAGE_TAG=${{ github.sha }}
             
             # Login en el VPS (necesario para el Pull)

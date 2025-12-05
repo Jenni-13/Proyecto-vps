@@ -1,0 +1,49 @@
+name: CI/CD Blue-Green
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 🔹 Clonar repo
+      uses: actions/checkout@v3
+
+    - name: 🔹 Conectar al VPS por SSH
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_KEY }}
+        script: |
+          cd /home/${{ secrets.VPS_USER }}/mini-proyecto
+
+          # Determinar contenedor activo
+          ACTIVE=$(docker ps --filter "name=app_blue" -q)
+
+          if [ "$ACTIVE" ]; then
+            NEW=green
+            OLD=blue
+          else
+            NEW=blue
+            OLD=green
+          fi
+
+          echo "Desplegando nueva versión: $NEW"
+
+          git pull
+
+          docker-compose up --build -d app_$NEW
+
+          echo "Probando nueva versión..."
+          sleep 5
+
+          curl -f http://localhost:3000 || exit 1
+
+          echo "Nueva versión OK, activando..."
+
+          docker-compose stop app_$OLD

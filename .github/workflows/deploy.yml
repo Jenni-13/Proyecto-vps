@@ -65,6 +65,8 @@ jobs:
             # Moverse al directorio del proyecto
             cd ~/Proyecto-vps
 
+            docker compose up -d nginx
+
             # Exportar variables para el docker-compose.yml
             export GH_REPO=${{ github.repository }}
             export IMAGE_TAG=${{ github.sha }}

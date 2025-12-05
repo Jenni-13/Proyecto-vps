@@ -12,11 +12,17 @@ jobs:
       contents: read
       packages: write 
     
-    # 🚨 1. CORRECCIÓN: Definir variable en minúsculas (soluciona 'Unrecognized function' y 'lowercase')
-    env:
-      REPO_LOWER: ${{ lower(github.repository) }} 
-      
+    # 🚨 NOTA: NO USAMOS 'env:' aquí para evitar el error 'lower()'
+    
     steps:
+      # 🚨 1. PASO CLAVE: CALCULAR Y GUARDAR EL NOMBRE DEL REPO EN MINÚSCULAS 🚨
+      - name: Calculate Lowercase Repository Name
+        id: repo_calc
+        run: |
+          # Bash resuelve la conversión a minúsculas y guarda el resultado como un output
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
+
       - name: Checkout repo
         uses: actions/checkout@v3
 
@@ -40,23 +46,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }} 
 
-      # 🚨 2. CORRECCIÓN: Construir y Subir Backend (usando la variable REPO_LOWER) 🚨
+      # 🚨 2. CONSTRUIR BACKEND (usando el output 'repo_calc') 🚨
       - name: Build and Push Backend Image
         uses: docker/build-push-action@v4
         with:
-          context: ./backend # Contexto es la carpeta backend
+          context: ./backend
           push: true
-          file: ./backend/Dockerfile # Ruta a tu Dockerfile de backend
-          tags: ghcr.io/${{ env.REPO_LOWER }}/backend:${{ github.sha }}
+          file: ./backend/Dockerfile
+          tags: ghcr.io/${{ steps.repo_calc.outputs.repo_lower }}/backend:${{ github.sha }}
 
-      # 🚨 3. CORRECCIÓN: Construir y Subir Frontend (usando la variable REPO_LOWER) 🚨
+      # 🚨 3. CONSTRUIR FRONTEND (usando el output 'repo_calc') 🚨
       - name: Build and Push Frontend Image
         uses: docker/build-push-action@v4
         with:
-          context: ./frontend # Contexto es la carpeta frontend
+          context: ./frontend
           push: true
-          file: ./frontend/Dockerfile # Ruta a tu Dockerfile de frontend
-          tags: ghcr.io/${{ env.REPO_LOWER }}/frontend:${{ github.sha }}
+          file: ./frontend/Dockerfile
+          tags: ghcr.io/${{ steps.repo_calc.outputs.repo_lower }}/frontend:${{ github.sha }}
 
       # --- 🚀 Despliegue a VPS (Blue-Green) ---
       
@@ -70,15 +76,14 @@ jobs:
             # Moverse al directorio del proyecto
             cd ~/Proyecto-vps
 
-            # 🚨 4. SINCRONIZACIÓN: Obtener los archivos corregidos (docker-compose.yml y confs)
-            # NOTA: Esto fallará si no has resuelto el conflicto de Git primero.
+            # SINCRONIZACIÓN DE CÓDIGO (Importante para los archivos .conf y docker-compose.yml)
             git pull origin main
             
             # Asegurar que el Nginx proxy esté corriendo
             docker compose up -d nginx
 
-            # 🚨 5. EXPORTAR VARIABLES (En minúsculas) para Docker Compose 🚨
-            export GH_REPO=${{ env.REPO_LOWER }}
+            # 🚨 4. EXPORTAR VARIABLES (GH_REPO toma el valor calculado) 🚨
+            export GH_REPO=${{ steps.repo_calc.outputs.repo_lower }}
             export IMAGE_TAG=${{ github.sha }}
             
             # Login en el VPS (necesario para el Pull)

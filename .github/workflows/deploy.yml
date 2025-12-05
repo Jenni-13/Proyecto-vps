@@ -17,20 +17,15 @@ jobs:
       - name: Get Lowercase Repository Info
         id: get_repo_info
         run: |
-          # 1. Convertir el dueño del repositorio (Jenni-13) a minúsculas
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          
-          # 2. El nombre del repo ya es minúsculas (proyecto-vps)
           REPO_NAME=${{ github.event.repository.name }}
-          
-          # 3. Combinar para obtener la ruta completa y guardarla como output
           FULL_REPO_PATH="$OWNER_LOWER/$REPO_NAME"
           echo "full_repo_path=$FULL_REPO_PATH" >> $GITHUB_OUTPUT
       
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      # --- Node Setup con Caching (Soluciona Error 500) ---
+      # --- Node Setup con Caching (Para el Backend) ---
       
       - name: Setup Node.js 18
         uses: actions/setup-node@v3
@@ -45,19 +40,12 @@ jobs:
           path: backend/node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('backend/package-lock.json') }}
       
-      # 🚨 3. INSTALAR Y PROBAR: Backend (USANDO npm install)
+      # 🚨 3. INSTALAR Y PROBAR: Backend (USANDO npm install para evitar EUSAGE)
       - name: Install dependencies and Run tests
         run: |
           cd backend
-          npm install  # <-- Cambiado de npm ci a npm install
+          npm install
           npm test
-
-      # 🚨 4. COMPILACIÓN: Instalar dependencias y compilar el FRONTEND (USANDO npm install)
-      - name: Install Frontend dependencies and Build
-        run: |
-          cd frontend
-          npm install  # <-- Cambiado de npm ci a npm install
-          npm run build # ¡Crea la carpeta dist/ necesaria para el Dockerfile!
 
       # --- 🐳 Configuración y Subida a GHCR ---
       
@@ -68,7 +56,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }} 
 
-      # 🚨 5. Build y Push Backend
+      # 🚨 4. Build y Push Backend
       - name: Build and Push Backend Image
         uses: docker/build-push-action@v4
         with:
@@ -77,7 +65,7 @@ jobs:
           file: ./backend/Dockerfile
           tags: ghcr.io/${{ steps.get_repo_info.outputs.full_repo_path }}/backend:${{ github.sha }}
 
-      # 🚨 6. Build y Push Frontend 
+      # 🚨 5. Build y Push Frontend (Versión Estática, no requiere npm install/build)
       - name: Build and Push Frontend Image
         uses: docker/build-push-action@v4
         with:
@@ -104,7 +92,7 @@ jobs:
             # Asegurar que el Nginx proxy esté corriendo
             docker compose up -d nginx
 
-            # 🚨 7. EXPORTAR VARIABLES
+            # 🚨 6. EXPORTAR VARIABLES
             export GH_REPO=${{ steps.get_repo_info.outputs.full_repo_path }}
             export IMAGE_TAG=${{ github.sha }}
             
@@ -130,7 +118,7 @@ jobs:
             # 2. Pull de la nueva imagen
             docker compose pull ${NEW_BACKEND} ${NEW_FRONTEND}
             
-            # 3. Levantar nuevo contenedor (¡Esto debería funcionar con el SWAP aplicado!)
+            # 3. Levantar nuevo contenedor (Debería funcionar con el SWAP aplicado)
             docker compose up -d ${NEW_BACKEND} ${NEW_FRONTEND}
             
             # 4. Esperar la salud del nuevo contenedor

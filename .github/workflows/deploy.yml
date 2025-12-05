@@ -45,18 +45,18 @@ jobs:
           path: backend/node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('backend/package-lock.json') }}
       
-      # 🚨 3. INSTALAR Y PROBAR: Backend
-      - name: Install dependencies (npm ci) and Run tests
+      # 🚨 3. INSTALAR Y PROBAR: Backend (USANDO npm install)
+      - name: Install dependencies and Run tests
         run: |
           cd backend
-          npm ci
+          npm install  # <-- Cambiado de npm ci a npm install
           npm test
 
-      # 🚨 4. COMPILACIÓN: Instalar dependencias y compilar el FRONTEND (Crea 'dist')
+      # 🚨 4. COMPILACIÓN: Instalar dependencias y compilar el FRONTEND (USANDO npm install)
       - name: Install Frontend dependencies and Build
         run: |
           cd frontend
-          npm ci
+          npm install  # <-- Cambiado de npm ci a npm install
           npm run build # ¡Crea la carpeta dist/ necesaria para el Dockerfile!
 
       # --- 🐳 Configuración y Subida a GHCR ---
@@ -77,7 +77,7 @@ jobs:
           file: ./backend/Dockerfile
           tags: ghcr.io/${{ steps.get_repo_info.outputs.full_repo_path }}/backend:${{ github.sha }}
 
-      # 🚨 6. Build y Push Frontend (Ahora la carpeta 'dist/' existe)
+      # 🚨 6. Build y Push Frontend 
       - name: Build and Push Frontend Image
         uses: docker/build-push-action@v4
         with:
@@ -130,7 +130,7 @@ jobs:
             # 2. Pull de la nueva imagen
             docker compose pull ${NEW_BACKEND} ${NEW_FRONTEND}
             
-            # 3. Levantar nuevo contenedor
+            # 3. Levantar nuevo contenedor (¡Esto debería funcionar con el SWAP aplicado!)
             docker compose up -d ${NEW_BACKEND} ${NEW_FRONTEND}
             
             # 4. Esperar la salud del nuevo contenedor

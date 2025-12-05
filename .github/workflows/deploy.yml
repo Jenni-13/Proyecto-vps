@@ -38,9 +38,9 @@ jobs:
       - name: Run tests (Supertest)
         run: |
           cd backend
-          # Agregar limpieza de caché y reintento de instalación
+          # Limpia el caché de npm (por si acaso) y luego usa --prefer-offline=false
           npm cache clean --force
-          npm ci # Instalar dependencias
+          npm ci --prefer-offline=false --no-cache # 🚨 Corrección: Deshabilitar caché y forzar red
           npm test
 
       # --- 🐳 Configuración y Subida a GHCR ---

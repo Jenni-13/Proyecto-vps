@@ -38,7 +38,9 @@ jobs:
       - name: Run tests (Supertest)
         run: |
           cd backend
-          npm ci 
+          # Agregar limpieza de caché y reintento de instalación
+          npm cache clean --force
+          npm ci # Instalar dependencias
           npm test
 
       # --- 🐳 Configuración y Subida a GHCR ---

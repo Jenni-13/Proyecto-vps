@@ -64,7 +64,7 @@ jobs:
           script: |
             # Moverse al directorio del proyecto
             cd ~/Proyecto-vps
-
+            git pull origin main
             docker compose up -d nginx
 
             # Exportar variables para el docker-compose.yml

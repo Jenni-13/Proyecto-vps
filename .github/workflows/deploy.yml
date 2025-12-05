@@ -11,18 +11,8 @@ jobs:
     permissions:
       contents: read
       packages: write 
-    
-    # 🚨 NOTA: NO USAMOS 'env:' aquí para evitar el error 'lower()'
-    
+      
     steps:
-      # 🚨 1. PASO CLAVE: CALCULAR Y GUARDAR EL NOMBRE DEL REPO EN MINÚSCULAS 🚨
-      - name: Calculate Lowercase Repository Name
-        id: repo_calc
-        run: |
-          # Bash resuelve la conversión a minúsculas y guarda el resultado como un output
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
-
       - name: Checkout repo
         uses: actions/checkout@v3
 
@@ -46,23 +36,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }} 
 
-      # 🚨 2. CONSTRUIR BACKEND (usando el output 'repo_calc') 🚨
+      # 🚨 1. CONSTRUIR Y SUBIR BACKEND (El repo ya está en minúsculas) 🚨
       - name: Build and Push Backend Image
         uses: docker/build-push-action@v4
         with:
           context: ./backend
           push: true
           file: ./backend/Dockerfile
-          tags: ghcr.io/${{ steps.repo_calc.outputs.repo_lower }}/backend:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
 
-      # 🚨 3. CONSTRUIR FRONTEND (usando el output 'repo_calc') 🚨
+      # 🚨 2. CONSTRUIR Y SUBIR FRONTEND (El repo ya está en minúsculas) 🚨
       - name: Build and Push Frontend Image
         uses: docker/build-push-action@v4
         with:
           context: ./frontend
           push: true
           file: ./frontend/Dockerfile
-          tags: ghcr.io/${{ steps.repo_calc.outputs.repo_lower }}/frontend:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
 
       # --- 🚀 Despliegue a VPS (Blue-Green) ---
       
@@ -76,14 +66,14 @@ jobs:
             # Moverse al directorio del proyecto
             cd ~/Proyecto-vps
 
-            # SINCRONIZACIÓN DE CÓDIGO (Importante para los archivos .conf y docker-compose.yml)
+            # SINCRONIZACIÓN DE CÓDIGO (¡Crucial para que este .yml funcione!)
             git pull origin main
             
             # Asegurar que el Nginx proxy esté corriendo
             docker compose up -d nginx
 
-            # 🚨 4. EXPORTAR VARIABLES (GH_REPO toma el valor calculado) 🚨
-            export GH_REPO=${{ steps.repo_calc.outputs.repo_lower }}
+            # 🚨 3. EXPORTAR VARIABLES (Directamente, ya están bien) 🚨
+            export GH_REPO=${{ github.repository }}
             export IMAGE_TAG=${{ github.sha }}
             
             # Login en el VPS (necesario para el Pull)
